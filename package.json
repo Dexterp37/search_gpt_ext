@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "start": "npm run start:firefox -- --verbose --firefox=nightly --firefox-profile=.test_profile_ext --profile-create-if-missing",
+    "start:firefox": "web-ext run --source-dir ./"
+  },
+  "devDependencies": {
+    "web-ext": "^7.6.2",
+    "webextension-polyfill": "^0.10.0"
+  }
+}
