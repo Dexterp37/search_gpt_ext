@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-# https://github.com/mdn/webextensions-examples/blob/main/native-messaging/app/ping_pong.py
 
 import logging
 import uvicorn
 
-from fastapi import Body, FastAPI, Response
+from fastapi import Body, FastAPI
 from pathlib import Path
 
 from chromadb.config import Settings
@@ -85,7 +84,6 @@ async def startup_event():
     model_path = "models/ggml-gpt4all-j-v1.3-groovy.bin"
     logging.debug(f"Loading the LLM from {model_path}")
 
-    # This trashes the STDOUT with over 1MB of data while initializing.
     app.state.llm = GPT4All(
         model=model_path,
         n_ctx=1000,
