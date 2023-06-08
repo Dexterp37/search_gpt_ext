@@ -1,8 +1,8 @@
 {
 
-  "description": "Native messaging example add-on",
+  "description": "Search GPT history example webextension",
   "manifest_version": 2,
-  "name": "Native messaging example",
+  "name": "Search GPT History example",
   "version": "1.0",
   "icons": {
     "48": "icons/message.svg"
@@ -22,13 +22,17 @@
     ]
   },
 
+  "omnibox": {
+    "keyword" : "mozgpt"
+  },
+
   "browser_action": {
     "default_icon": "icons/message.svg"
   },
 
   "permissions": [
     "history",
-    "nativeMessaging",
-    "tabHide"
+    "tabHide",
+    "http://localhost/*"
   ]
 }
