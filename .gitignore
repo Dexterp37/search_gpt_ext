@@ -1,4 +1,6 @@
 node_modules
+__pycache__
 .venv
 backend/local_db
+backend/models
 *.log

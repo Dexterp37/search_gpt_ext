@@ -1,7 +1,0 @@
-{
-    "name": "search_gpt",
-    "description": "Example host for native messaging",
-    "path": "D:\\Mozilla\\search-gpt-ext\\backend\\search_gpt_win.bat",
-    "type": "stdio",
-    "allowed_extensions": [ "search_gpt_ext@example.org" ]
-  }

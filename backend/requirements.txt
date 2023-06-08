@@ -1,3 +1,5 @@
-langchain
 chromadb
+gpt4all
+langchain
 sentence_transformers
+fastapi

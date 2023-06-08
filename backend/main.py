@@ -2,15 +2,16 @@
 # https://github.com/mdn/webextensions-examples/blob/main/native-messaging/app/ping_pong.py
 
 import logging
-import sys
-import json
-import struct
+import uvicorn
 
+from fastapi import Body, FastAPI, Response
 from pathlib import Path
 
 from chromadb.config import Settings
+from langchain.chains import RetrievalQA
 from langchain.docstore.document import Document
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.llms import GPT4All
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 
@@ -23,31 +24,7 @@ logging.basicConfig(
     ]
 )
 
-# Read a message from stdin and decode it.
-def getMessage():
-    rawLength = sys.stdin.buffer.read(4)
-    if len(rawLength) == 0:
-        sys.exit(0)
-    messageLength = struct.unpack('@I', rawLength)[0]
-    message = sys.stdin.buffer.read(messageLength).decode('utf-8')
-    return json.loads(message)
-
-# Encode a message for transmission, given its content.
-def encodeMessage(messageContent):
-    # https://docs.python.org/3/library/json.html#basic-usage
-    # To get the most compact JSON representation, you should specify
-    # (',', ':') to eliminate whitespace.
-    # We want the most compact representation because the browser rejects
-    # messages that exceed 1 MB.
-    encodedContent = json.dumps(messageContent, separators=(',', ':')).encode('utf-8')
-    encodedLength = struct.pack('@I', len(encodedContent))
-    return {'length': encodedLength, 'content': encodedContent}
-
-# Send an encoded message to stdout
-def sendMessage(encodedMessage):
-    sys.stdout.buffer.write(encodedMessage['length'])
-    sys.stdout.buffer.write(encodedMessage['content'])
-    sys.stdout.buffer.flush()
+app = FastAPI()
 
 def get_local_store(store_path_dir: str):
     """
@@ -56,12 +33,17 @@ def get_local_store(store_path_dir: str):
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
     store_path = Path(store_path_dir)
-    #if store_path.exists():
-    db = Chroma(embedding_function=embeddings, client_settings=Settings(
-        chroma_db_impl='duckdb+parquet',
-        persist_directory=str(store_path),
-        anonymized_telemetry=False
-    ))
+    db = Chroma(
+        embedding_function=embeddings,
+        client_settings=Settings(
+            chroma_db_impl='duckdb+parquet',
+            persist_directory=str(store_path),
+            anonymized_telemetry=False
+        ),
+        # This is redundant, but without the persist_directory
+        # here the persist() function will fail.
+        persist_directory=str(store_path)
+    )
 
     return db
 
@@ -83,25 +65,54 @@ def record_documents_in_local_store(documents, store, chunk_size=500, chunk_over
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(documents)
     store.add_documents(texts)
-
     store.persist()
 
-def main():
+def execute_prompt(store, llm, prompt):
+    retriever = store.as_retriever(search_kwargs={"k": 4})
+    qa = RetrievalQA.from_chain_type(
+        llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True
+    )
+    return qa(prompt)
+
+@app.on_event("startup")
+async def startup_event():
     logging.info("Local search GPT server started")
 
     logging.debug("Loading or creating local DB")
-    db = get_local_store("local_db")
+    app.state.db = get_local_store("local_db")
+
+    # Do not use `Path` or langchain will fail to load GPT4all on Windows.
+    model_path = "models/ggml-gpt4all-j-v1.3-groovy.bin"
+    logging.debug(f"Loading the LLM from {model_path}")
+
+    # This trashes the STDOUT with over 1MB of data while initializing.
+    app.state.llm = GPT4All(
+        model=model_path,
+        n_ctx=1000,
+        backend='gptj',
+        callbacks=[],
+        verbose=False
+    )
 
     logging.info("Start listening for browser messages")
-    while True:
-        msg = getMessage()
-        if msg["type"] == "sync":
-            logging.debug("Parsing a sync message")
-            parsed_docs = get_doc_from_message(msg["data"])
-            logging.debug(f"Parsed {len(parsed_docs)} documents from the sync message")
-            record_documents_in_local_store(parsed_docs, db)
-        elif msg["type"] == "prompt":
-            sendMessage(encodeMessage("Smart answer"))
+
+@app.post("/sync")
+async def sync(
+    msg: dict = Body(...)
+):
+    logging.debug("Parsing a sync message")
+    parsed_docs = get_doc_from_message(msg["data"])
+    logging.debug(f"Parsed {len(parsed_docs)} documents from the sync message")
+    record_documents_in_local_store(parsed_docs, app.state.db)
+
+@app.post("/prompt")
+async def prompt(
+    msg: dict = Body(...)
+):
+    response = execute_prompt(app.state.db, app.state.llm, msg["data"])
+    return {"message": response}
+
 
 if __name__ == '__main__':
-    main()
+    uvicorn.run("main:app", host="0.0.0.0", port=8888, reload=False)
+
