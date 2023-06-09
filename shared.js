@@ -11,3 +11,22 @@ async function sendMessage(msg) {
   });
   return response.json();
 }
+
+async function getActiveTabContent() {
+  const tab = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+
+  const content = await browser.scripting.executeScript({
+    target: {
+        tabId: tab[0].id,
+    },
+    files: [
+      "/node_modules/@mozilla/readability/Readability.js",
+      "/content_scripts/extractor.js"
+    ]
+  });
+
+  return content;
+}

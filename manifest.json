@@ -34,8 +34,10 @@
   },
 
   "permissions": [
+    "<all_urls>",
     "history",
-    "tabHide",
+    "tabs",
+    "scripting",
     "http://localhost/*"
   ]
 }

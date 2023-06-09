@@ -107,7 +107,8 @@ async def sync(
 async def prompt(
     msg: dict = Body(...)
 ):
-    response = execute_prompt(app.state.db, app.state.llm, msg["data"])
+    prompt_data = msg["data"]
+    response = execute_prompt(app.state.db, app.state.llm, prompt_data["prompt"])
     return {"message": response}
 
 
