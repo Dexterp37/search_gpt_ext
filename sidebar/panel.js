@@ -6,17 +6,19 @@ const historyView = document.querySelector("#history");
 function updateChatHistory(prompt, response) {
   historyView.value += `You: ${prompt}\n\n`;
   let responseText = "No answer";
-  if ("result" in response["message"]) {
-    responseText = response["message"]["result"];
+  if ("answer" in response["message"]) {
+    responseText = response["message"]["answer"];
   }
   historyView.value += `Search GPT: ${responseText}\n\n`;
+  console.debug(`Received response: `, response["message"]);
 }
 
 async function queryGPT(promptText) {
-  let pageContext;
+  let pageContext = {};
   try {
-    const readableContext = await getActiveTabContent();
-    pageContext = readableContext[0].result.textContent;
+    const content = await getActiveTabContent();
+    pageContext["textContent"] = content.content[0].result.textContent;
+    pageContext["pageUrl"] = content.url;
   } catch (e) {
     console.error(`Failed to get context from the current page`, e);
   }

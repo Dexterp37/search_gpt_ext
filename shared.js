@@ -13,14 +13,15 @@ async function sendMessage(msg) {
 }
 
 async function getActiveTabContent() {
-  const tab = await browser.tabs.query({
+  const tabs = await browser.tabs.query({
     active: true,
     currentWindow: true,
   });
 
+  const tab = tabs[0];
   const content = await browser.scripting.executeScript({
     target: {
-        tabId: tab[0].id,
+        tabId: tab.id,
     },
     files: [
       "/node_modules/@mozilla/readability/Readability.js",
@@ -28,5 +29,8 @@ async function getActiveTabContent() {
     ]
   });
 
-  return content;
+  return {
+    url: tab.url,
+    content
+  };
 }

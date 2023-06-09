@@ -3,11 +3,12 @@
 import logging
 import uvicorn
 
+from collections import deque
 from fastapi import Body, FastAPI
 from pathlib import Path
 
 from chromadb.config import Settings
-from langchain.chains import RetrievalQA
+from langchain.chains import ConversationalRetrievalChain
 from langchain.docstore.document import Document
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.llms import GPT4All
@@ -60,18 +61,18 @@ def get_doc_from_message(data):
         docs.append(Document(page_content=doc_content, metadata=doc_metadata))
     return docs
 
-def record_documents_in_local_store(documents, store, chunk_size=500, chunk_overlap=50):
+def record_documents_in_local_store(documents, store, chunk_size=1024, chunk_overlap=50):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(documents)
+    # TODO: make sure to assign ids here.
     store.add_documents(texts)
     store.persist()
 
-def execute_prompt(store, llm, prompt):
-    retriever = store.as_retriever(search_kwargs={"k": 4})
-    qa = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True
-    )
-    return qa(prompt)
+def execute_prompt(chat_history, qa, prompt):
+    response = qa({"question": prompt, "chat_history": list(chat_history)})
+    # Append to the chat history.
+    chat_history.append((prompt, response["answer"]))
+    return response
 
 @app.on_event("startup")
 async def startup_event():
@@ -92,6 +93,13 @@ async def startup_event():
         verbose=False
     )
 
+    # Make sure to store the chat history.
+    app.state.chat_history = deque(maxlen=50)
+    app.state.retriever = app.state.db.as_retriever(search_kwargs={"k": 4})
+    app.state.qa_chain = ConversationalRetrievalChain.from_llm(
+        llm=app.state.llm, chain_type="stuff", retriever=app.state.retriever, return_source_documents=True
+    )
+
     logging.info("Start listening for browser messages")
 
 @app.post("/sync")
@@ -108,7 +116,20 @@ async def prompt(
     msg: dict = Body(...)
 ):
     prompt_data = msg["data"]
-    response = execute_prompt(app.state.db, app.state.llm, prompt_data["prompt"])
+    prompt_text = prompt_data["prompt"]
+    prompt_context = prompt_data["context"]
+
+    # If there's some context (e.g. page content), add it to the store.
+    # Only do that if not already present!
+    if prompt_context is not None:
+        page_doc = Document(page_content=prompt_context["textContent"], metadata={"url": prompt_context["pageUrl"]})
+        # TODO: Before uncommenting the function below, we should figure out how to assign
+        # unique ids to documents. We should make sure to remember that documents will be
+        # split in chunks and so each chunk must have a stable id.
+        # record_documents_in_local_store([page_doc], app.state.db)
+
+    response = execute_prompt(app.state.chat_history, app.state.qa_chain, prompt_text)
+
     return {"message": response}
 
 
