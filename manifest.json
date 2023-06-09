@@ -18,16 +18,19 @@
   "background": {
     "scripts": [
         "node_modules/webextension-polyfill/dist/browser-polyfill.js",
+        "shared.js",
         "background.js"
     ]
   },
 
-  "omnibox": {
-    "keyword" : "mozgpt"
-  },
-
   "browser_action": {
     "default_icon": "icons/message.svg"
+  },
+
+  "sidebar_action": {
+    "default_icon": "icons/star.png",
+    "default_title" : "Search GPT",
+    "default_panel": "sidebar/panel.html"
   },
 
   "permissions": [

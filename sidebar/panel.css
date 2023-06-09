@@ -1,0 +1,41 @@
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  height: 90%;
+  font: caption;
+  background-color: #F4F7F8;
+}
+
+#content {
+  height: 100%;
+  margin: 2em 2em 0 2em;
+  display: flex;
+  flex-direction: column;
+}
+
+#history-parent {
+  width: 100%;
+  height: 90%;
+  margin-top: 1em;
+  display: flex;
+  flex-direction: column;
+}
+
+#history {
+  height: 100%;
+}
+
+#prompt-parent {
+  width: 100%;
+  height: 10%;
+  margin-top: 1em;
+  display: flex;
+  flex-direction: column;
+}
+
+
