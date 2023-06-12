@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+import copy
+import hashlib
 import logging
 import uvicorn
 
 from collections import deque
 from fastapi import Body, FastAPI
 from pathlib import Path
+from typing import List, Optional
 
 from chromadb.config import Settings
 from langchain.chains import ConversationalRetrievalChain
@@ -61,11 +64,40 @@ def get_doc_from_message(data):
         docs.append(Document(page_content=doc_content, metadata=doc_metadata))
     return docs
 
+def get_document_id(doc: Document):
+    doc_identifier = f"{doc.metadata['url']}#chunk{doc.metadata['chunk_id']}".encode('utf-8')
+    return hashlib.sha3_256(doc_identifier).hexdigest()
+
 def record_documents_in_local_store(documents, store, chunk_size=1024, chunk_overlap=50):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    # Same as LangChain's RecursiveCharacterTextSplitter, but when chunking also
+    # assign an id to the chunk in order to simplify generating unique ids.
+    class TextSplitterWithChunkId(RecursiveCharacterTextSplitter):
+        def create_documents(
+            self, texts: List[str], metadatas: Optional[List[dict]] = None
+        ) -> List[Document]:
+            """Create documents from a list of texts."""
+            _metadatas = metadatas or [{}] * len(texts)
+            documents = []
+            for i, text in enumerate(texts):
+                for chunk_id, chunk in enumerate(self.split_text(text)):
+                    new_metadata = copy.deepcopy(_metadatas[i])
+                    new_metadata["chunk_id"] = chunk_id
+                    new_doc = Document(
+                        page_content=chunk, metadata=new_metadata
+                    )
+                    documents.append(new_doc)
+            return documents
+
+    text_splitter = TextSplitterWithChunkId(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(documents)
-    # TODO: make sure to assign ids here.
-    store.add_documents(texts)
+    doc_ids = [get_document_id(d) for d in texts]
+    try:
+        # Try to add the documents. If the id is already present, the DB will not
+        # like it. If that's the case, resort to updating the existing docs.
+        store.add_documents(texts, ids=doc_ids)
+    except:
+        for id, doc in zip(doc_ids, texts):
+            store.update_document(id, doc)
     store.persist()
 
 def execute_prompt(chat_history, qa, prompt):
@@ -90,14 +122,15 @@ async def startup_event():
         n_ctx=1000,
         backend='gptj',
         callbacks=[],
-        verbose=False
+        verbose=True
     )
 
     # Make sure to store the chat history.
     app.state.chat_history = deque(maxlen=50)
     app.state.retriever = app.state.db.as_retriever(search_kwargs={"k": 4})
     app.state.qa_chain = ConversationalRetrievalChain.from_llm(
-        llm=app.state.llm, chain_type="stuff", retriever=app.state.retriever, return_source_documents=True
+        llm=app.state.llm, chain_type="stuff", retriever=app.state.retriever,
+        return_source_documents=True, verbose=True
     )
 
     logging.info("Start listening for browser messages")
@@ -121,12 +154,9 @@ async def prompt(
 
     # If there's some context (e.g. page content), add it to the store.
     # Only do that if not already present!
-    if prompt_context is not None:
+    if prompt_context is not None and "textContent" in prompt_context and prompt_context["textContent"] is not None:
         page_doc = Document(page_content=prompt_context["textContent"], metadata={"url": prompt_context["pageUrl"]})
-        # TODO: Before uncommenting the function below, we should figure out how to assign
-        # unique ids to documents. We should make sure to remember that documents will be
-        # split in chunks and so each chunk must have a stable id.
-        # record_documents_in_local_store([page_doc], app.state.db)
+        record_documents_in_local_store([page_doc], app.state.db)
 
     response = execute_prompt(app.state.chat_history, app.state.qa_chain, prompt_text)
 
