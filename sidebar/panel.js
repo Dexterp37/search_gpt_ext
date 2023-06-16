@@ -4,13 +4,32 @@ const promptInput = document.querySelector("#prompt");
 const historyView = document.querySelector("#history");
 
 function updateChatHistory(prompt, response) {
-  historyView.value += `You: ${prompt}\n\n`;
+  let userLineElement = document.createElement("p");
+  userLineElement.textContent = `${prompt}`;
+  userLineElement.className = "history-user-entry";
+  historyView.appendChild(userLineElement);
+
   let responseText = "No answer";
   if ("answer" in response["message"]) {
     responseText = response["message"]["answer"];
   }
-  historyView.value += `Search GPT: ${responseText}\n\n`;
-  console.debug(`Received response: `, response["message"]);
+
+  let sources = "";
+  if (("source_documents" in response["message"])
+      && (response["message"]["source_documents"].length > 0)) {
+    const hrefTags = response["message"]["source_documents"]
+      .map(doc => doc["metadata"]["url"])
+      .map(url => `<li><a href="${url}">${url.slice(0, 32)}...</a></li>`);
+    sources = `<br>Sources:<br><ul>${hrefTags.join("")}</ul>`;
+  }
+
+  let gptLineElement = document.createElement("p");
+  gptLineElement.innerHTML = `${responseText}${sources}`;
+  gptLineElement.className = "history-gpt-entry";
+  historyView.appendChild(gptLineElement);
+  gptLineElement.scrollIntoView();
+
+  console.debug(`Received response: `, response);
 }
 
 async function queryGPT(promptText) {

@@ -68,7 +68,7 @@ def get_document_id(doc: Document):
     doc_identifier = f"{doc.metadata['url']}#chunk{doc.metadata['start_index']}".encode('utf-8')
     return hashlib.sha3_256(doc_identifier).hexdigest()
 
-def record_documents_in_local_store(documents, store, chunk_size=1024, chunk_overlap=50):
+def record_documents_in_local_store(documents, store, chunk_size=512, chunk_overlap=25):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap, add_start_index=True
     )
@@ -84,6 +84,8 @@ def record_documents_in_local_store(documents, store, chunk_size=1024, chunk_ove
     store.persist()
 
 def execute_prompt(chat_history, qa, prompt):
+    # TODO: what about crafting a different prompt, always adding the page the first time,
+    # along with 2-3 context?
     response = qa({"question": prompt, "chat_history": list(chat_history)})
     # Append to the chat history.
     chat_history.append((prompt, response["answer"]))
@@ -110,7 +112,11 @@ async def startup_event():
 
     # Make sure to store the chat history.
     app.state.chat_history = deque(maxlen=50)
-    app.state.retriever = app.state.db.as_retriever(search_kwargs={"k": 4})
+    app.state.retriever = app.state.db.as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={"score_threshold": .5},
+        #search_kwargs={"k": 4}
+    )
     app.state.qa_chain = ConversationalRetrievalChain.from_llm(
         llm=app.state.llm, chain_type="stuff", retriever=app.state.retriever,
         return_source_documents=True, verbose=True

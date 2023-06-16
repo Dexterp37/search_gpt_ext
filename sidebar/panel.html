@@ -9,8 +9,35 @@
 <body>
 
   <div id="content">
+    <details>
+      <summary>Options (click to expand)</summary>
+      <p>
+        Some description.
+      </p>
+      <fieldset>
+        <legend>Select a backend chain:</legend>
+
+        <div>
+          <input type="radio" id="huey" name="drone" value="huey"
+                 checked>
+          <label for="huey">Huey</label>
+        </div>
+
+        <div>
+          <input type="radio" id="dewey" name="drone" value="dewey">
+          <label for="dewey">Dewey</label>
+        </div>
+
+        <div>
+          <input type="radio" id="louie" name="drone" value="louie">
+          <label for="louie">Louie</label>
+        </div>
+    </fieldset>
+
+    </details>
+
     <div id="history-parent">
-      <textarea id="history" name="history" rows="5" cols="33" placeholder="No chat history" readonly></textarea>
+      <div id="history" name="history" rows="5" cols="33" placeholder="No chat history" readonly></div>
     </div>
     <div id="prompt-parent">
       <label for="prompt">How can I help you?</label>

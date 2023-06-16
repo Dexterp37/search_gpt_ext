@@ -24,10 +24,35 @@ body {
   margin-top: 1em;
   display: flex;
   flex-direction: column;
+  overflow-y: scroll;
+  border: 1px solid #999;
+  box-shadow: inset 0px 1px 2px #666;
 }
 
 #history {
   height: 100%;
+}
+
+.history-user-entry {
+  background-color: darkgreen;
+  color: white;
+  margin: 0px;
+}
+
+.history-user-entry:before {
+  content: 'You: ';
+  font-weight: bold;
+}
+
+.history-gpt-entry {
+  background-color: gainsboro;
+  color: black;
+  margin: 0px;
+}
+
+.history-gpt-entry:before {
+  content: 'AI: ';
+  font-weight: bold;
 }
 
 #prompt-parent {
