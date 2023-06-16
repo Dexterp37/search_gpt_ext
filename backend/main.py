@@ -65,30 +65,13 @@ def get_doc_from_message(data):
     return docs
 
 def get_document_id(doc: Document):
-    doc_identifier = f"{doc.metadata['url']}#chunk{doc.metadata['chunk_id']}".encode('utf-8')
+    doc_identifier = f"{doc.metadata['url']}#chunk{doc.metadata['start_index']}".encode('utf-8')
     return hashlib.sha3_256(doc_identifier).hexdigest()
 
 def record_documents_in_local_store(documents, store, chunk_size=1024, chunk_overlap=50):
-    # Same as LangChain's RecursiveCharacterTextSplitter, but when chunking also
-    # assign an id to the chunk in order to simplify generating unique ids.
-    class TextSplitterWithChunkId(RecursiveCharacterTextSplitter):
-        def create_documents(
-            self, texts: List[str], metadatas: Optional[List[dict]] = None
-        ) -> List[Document]:
-            """Create documents from a list of texts."""
-            _metadatas = metadatas or [{}] * len(texts)
-            documents = []
-            for i, text in enumerate(texts):
-                for chunk_id, chunk in enumerate(self.split_text(text)):
-                    new_metadata = copy.deepcopy(_metadatas[i])
-                    new_metadata["chunk_id"] = chunk_id
-                    new_doc = Document(
-                        page_content=chunk, metadata=new_metadata
-                    )
-                    documents.append(new_doc)
-            return documents
-
-    text_splitter = TextSplitterWithChunkId(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap, add_start_index=True
+    )
     texts = text_splitter.split_documents(documents)
     doc_ids = [get_document_id(d) for d in texts]
     try:
