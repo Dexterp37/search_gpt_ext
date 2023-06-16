@@ -1,5 +1,5 @@
 chromadb
 gpt4all
-langchain
+langchain==0.0.201
 sentence_transformers
-fastapi
+fastapi==0.96.0
