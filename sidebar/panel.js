@@ -37,6 +37,7 @@ async function queryGPT(promptText) {
   try {
     const content = await getActiveTabContent();
     pageContext["textContent"] = content.content[0].result.textContent;
+    pageContext["rawDOM"] = content.rawDOM[0].result;
     pageContext["pageUrl"] = content.url;
   } catch (e) {
     console.error(`Failed to get context from the current page`, e);

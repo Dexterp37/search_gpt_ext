@@ -13,6 +13,8 @@ from typing import List, Optional
 from chromadb.config import Settings
 from langchain.chains import ConversationalRetrievalChain
 from langchain.docstore.document import Document
+from langchain.document_loaders.parsers.html.bs4 import BS4HTMLParser
+from langchain.document_loaders.blob_loaders import Blob
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.llms import GPT4All
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -143,8 +145,19 @@ async def prompt(
     # If there's some context (e.g. page content), add it to the store.
     # Only do that if not already present!
     if prompt_context is not None and "textContent" in prompt_context and prompt_context["textContent"] is not None:
-        page_doc = Document(page_content=prompt_context["textContent"], metadata={"url": prompt_context["pageUrl"]})
-        record_documents_in_local_store([page_doc], app.state.db)
+        # Extract the text using beautiful soup.
+        raw_dom = prompt_context["rawDOM"]
+        parser = BS4HTMLParser()
+        page_docs = parser.parse(Blob.from_data(raw_dom, path=prompt_context["pageUrl"]))
+        for doc in page_docs:
+            doc.metadata["url"] = prompt_context["pageUrl"]
+
+        # Don't rely on readermode extracted text for now, it might
+        # not capture everything we need.
+        #page_docs = [Document(page_content=prompt_context["textContent"], metadata={"url": prompt_context["pageUrl"]})]
+
+        # Store the data in the vector DB.
+        record_documents_in_local_store(page_docs, app.state.db)
 
     response = execute_prompt(app.state.chat_history, app.state.qa_chain, prompt_text)
 
