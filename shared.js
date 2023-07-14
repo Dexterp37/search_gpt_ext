@@ -28,9 +28,19 @@ async function getActiveTabContent() {
       "/content_scripts/extractor.js"
     ]
   });
+  const rawDOM = await browser.scripting.executeScript({
+    target: {
+        tabId: tab.id,
+    },
+    func: () => {
+      return document.documentElement.outerHTML;
+    }
+  });
+
 
   return {
     url: tab.url,
-    content
+    rawDOM,
+    content,
   };
 }
