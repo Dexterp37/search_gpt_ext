@@ -104,7 +104,6 @@ async def startup_event():
 
     app.state.llm = GPT4All(
         model=model_path,
-        n_ctx=1000,
         backend='gptj',
         callbacks=[],
         verbose=True

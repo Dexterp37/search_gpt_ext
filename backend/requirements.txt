@@ -1,5 +1,5 @@
 chromadb
-gpt4all
-langchain==0.0.201
+gpt4all==0.3.6
+langchain==0.0.222
 sentence_transformers
 fastapi==0.96.0
