@@ -12,6 +12,7 @@ from typing import List, Optional
 
 from chromadb.config import Settings
 from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferWindowMemory
 from langchain.docstore.document import Document
 from langchain.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders import Blob
@@ -101,7 +102,8 @@ async def startup_event():
     app.state.db = get_local_store("local_db")
 
     # Do not use `Path` or langchain will fail to load GPT4all on Windows.
-    model_path = "models/ggml-gpt4all-j-v1.3-groovy.bin"
+    #model_path = "models/ggml-gpt4all-j-v1.3-groovy.bin"
+    model_path = "models/orca-mini-7b.ggmlv3.q4_0.bin"
     logging.debug(f"Loading the LLM from {model_path}")
 
     app.state.llm = GPT4All(
@@ -114,8 +116,9 @@ async def startup_event():
     # Make sure to store the chat history.
     app.state.chat_history = deque(maxlen=50)
     app.state.retriever = app.state.db.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={"score_threshold": .5},
+        search_type="mmr",
+        #search_type="similarity_score_threshold",
+        #search_kwargs={"score_threshold": .5},
         #search_kwargs={"k": 4}
     )
     app.state.qa_chain = ConversationalRetrievalChain.from_llm(

@@ -7,7 +7,7 @@ To get this working, there's a little setup to do.
 ## Setup the backend
 Requires Python 3.8+.
 
-1. Download the model from [here](https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin) and place it in `backend/models`
+1. Download the model from [here](https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin) (or the orca-mini model from [here](https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-7b.ggmlv3.q4_0.bin)) and place it in `backend/models`
 2. Run the following instructions:
 
 ```bash
