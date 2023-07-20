@@ -1,6 +1,6 @@
-beautifulsoup4
-lxml
-chromadb
+beautifulsoup4==4.12.2
+lxml==4.9.3
+chromadb==0.3.29
 gpt4all==0.3.6
 langchain==0.0.222
 sentence_transformers
