@@ -12,16 +12,12 @@ async function sendMessage(msg) {
   return response.json();
 }
 
-async function getActiveTabContent() {
-  const tabs = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
+async function getContentByTabId(tabId) {
+  let tabInfo = await browser.tabs.get(tabId);
 
-  const tab = tabs[0];
   const content = await browser.scripting.executeScript({
     target: {
-        tabId: tab.id,
+        tabId: tabId,
     },
     files: [
       "/node_modules/@mozilla/readability/Readability.js",
@@ -30,7 +26,7 @@ async function getActiveTabContent() {
   });
   const rawDOM = await browser.scripting.executeScript({
     target: {
-        tabId: tab.id,
+        tabId: tabId,
     },
     func: () => {
       return document.documentElement.outerHTML;
@@ -39,8 +35,18 @@ async function getActiveTabContent() {
 
 
   return {
-    url: tab.url,
+    url: tabInfo.url,
     rawDOM,
     content,
   };
+}
+
+async function getActiveTabContent() {
+  const tabs = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+
+  const tab = tabs[0];
+  return await getContentByTabId(tab.id);
 }

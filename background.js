@@ -26,3 +26,43 @@ browser.browserAction.onClicked.addListener(() => {
     })
   );
 });
+
+async function storeContent(content) {
+  let pageContext = {};
+  try {
+    pageContext["textContent"] = content.content[0].result.textContent;
+    pageContext["rawDOM"] = content.rawDOM[0].result;
+    pageContext["pageUrl"] = content.url;
+  } catch (e) {
+    console.error(`Failed to get context from the current page`, e);
+  }
+
+  sendMessage({
+    type: "store",
+    data: {
+      context: pageContext
+    }
+  })
+}
+
+// This automatically submits page content to the backend.
+browser.tabs.onUpdated.addListener(
+  // The listener.
+  (tabId, changeInfo, tabInfo) => {
+    if (changeInfo.status != "complete") {
+      return;
+    }
+
+    console.log(`Updated tab: ${tabId}`);
+    console.log("Changed attributes: ", changeInfo);
+    console.log("New tab Info: ", tabInfo);
+
+    getContentByTabId(tabId)
+      .then(r => storeContent(r))
+      .catch(e => console.error(`Error while parsing content for tab ${tabId}`, e));
+  },
+  // The filter: only look for 'complete' status updates.
+  {
+    properties: ["status"],
+  }
+);
