@@ -119,7 +119,7 @@ async def startup_event():
         search_type="mmr",
         #search_type="similarity_score_threshold",
         #search_kwargs={"score_threshold": .5},
-        #search_kwargs={"k": 4}
+        search_kwargs={"k": 2}
     )
     app.state.qa_chain = ConversationalRetrievalChain.from_llm(
         llm=app.state.llm, chain_type="stuff", retriever=app.state.retriever,
