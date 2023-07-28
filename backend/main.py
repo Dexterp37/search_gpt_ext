@@ -31,6 +31,7 @@ logging.basicConfig(
 )
 
 app = FastAPI()
+html_parser = BS4HTMLParser()
 
 def get_local_store(store_path_dir: str):
     """
@@ -137,6 +138,23 @@ async def sync(
     logging.debug(f"Parsed {len(parsed_docs)} documents from the sync message")
     record_documents_in_local_store(parsed_docs, app.state.db)
 
+@app.post("/store")
+async def store(
+    msg: dict = Body(...)
+):
+    data = msg["data"]
+    page_context = data["context"]
+
+    if page_context is not None and page_context["rawDOM"] is not None:
+        # Extract the text using beautiful soup.
+        raw_dom = page_context["rawDOM"]
+        page_docs = html_parser.parse(Blob.from_data(raw_dom, path=page_context["pageUrl"]))
+        for doc in page_docs:
+            doc.metadata["url"] = page_context["pageUrl"]
+
+        # Store the data in the vector DB.
+        record_documents_in_local_store(page_docs, app.state.db)
+
 @app.post("/prompt")
 async def prompt(
     msg: dict = Body(...)
@@ -150,8 +168,7 @@ async def prompt(
     if prompt_context is not None and "textContent" in prompt_context and prompt_context["textContent"] is not None:
         # Extract the text using beautiful soup.
         raw_dom = prompt_context["rawDOM"]
-        parser = BS4HTMLParser()
-        page_docs = parser.parse(Blob.from_data(raw_dom, path=prompt_context["pageUrl"]))
+        page_docs = html_parser.parse(Blob.from_data(raw_dom, path=prompt_context["pageUrl"]))
         for doc in page_docs:
             doc.metadata["url"] = prompt_context["pageUrl"]
 
